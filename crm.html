@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CRM — Vitanuts</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root {
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --color-text: #e9e9ed;
+  --color-accent: #9184d9;
+  --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --color-red: #e2685f;
+  --color-red-bg: rgba(226, 104, 95, 0.14);
+  --color-amber: #e0b355;
+  --color-amber-bg: rgba(224, 179, 85, 0.14);
+  --color-green: #6fcf97;
+  --color-green-bg: rgba(111, 207, 151, 0.14);
+  --font: "Inter", system-ui, sans-serif;
+  --radius: 10px;
+}
+* , *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+h1 { font-size: 19px; font-weight: 600; margin: 0; }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+p { margin: 0; }
+.wrap { max-width: 520px; margin: 0 auto; padding: 14px 14px 90px; }
+.nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0 14px; }
+.card { background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius); padding: 14px; }
+.cliente-card { background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; cursor: pointer; }
+.cliente-card:active { background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); }
+.cliente-nome { font-weight: 600; font-size: 15px; margin-bottom: 3px; }
+.cliente-sub { font-size: 12.5px; color: color-mix(in srgb, var(--color-text) 60%, transparent); }
+.cliente-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.distancia { font-weight: 600; color: var(--color-accent); font-size: 13.5px; white-space: nowrap; }
+.tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+.tag-red { background: var(--color-red-bg); color: var(--color-red); }
+.tag-amber { background: var(--color-amber-bg); color: var(--color-amber); }
+.tag-green { background: var(--color-green-bg); color: var(--color-green); }
+.tag-neutral { background: color-mix(in srgb, var(--color-text) 12%, transparent); color: var(--color-text); }
+.muted { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+.btn { cursor: pointer; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; padding: 10px 16px; border-radius: 8px; font-family: var(--font); font-weight: 500; font-size: 14px; width: 100%; }
+.btn:active { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.btn-secundario { border-color: var(--color-divider); color: var(--color-text); }
+.btn-flutuante { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--color-accent); color: var(--color-bg); border: none; font-size: 26px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,0.4); cursor: pointer; z-index: 20; }
+select, input[type=text], input[type=number], textarea {
+  width: 100%; background: var(--color-bg); border: 1px solid var(--color-divider); color: var(--color-text);
+  border-radius: 8px; padding: 10px 12px; font-family: var(--font); font-size: 14px; margin-bottom: 10px;
+}
+textarea { resize: vertical; min-height: 60px; }
+label { display: block; font-size: 12px; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin-bottom: 4px; }
+.campo { margin-bottom: 12px; }
+.login-box { max-width: 320px; margin: 70px auto; text-align: center; }
+.overlay { position: fixed; inset: 0; background: rgba(10,10,16,0.75); z-index: 30; display: flex; align-items: flex-end; }
+.painel-modal { background: var(--color-bg); width: 100%; max-height: 88vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 18px 16px 24px; border-top: 1px solid var(--color-divider); }
+.painel-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.fechar-modal { background: none; border: none; color: var(--color-text); font-size: 22px; cursor: pointer; padding: 4px 8px; }
+.linha-preco { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.aviso { background: var(--color-amber-bg); border: 1px solid var(--color-amber); color: var(--color-amber); border-radius: var(--radius); padding: 10px 14px; font-size: 12.5px; margin-bottom: 14px; }
+.erro { background: var(--color-red-bg); border: 1px solid var(--color-red); color: var(--color-red); border-radius: var(--radius); padding: 10px 14px; font-size: 12.5px; margin-bottom: 14px; }
+.spinner-linha { text-align: center; padding: 30px 0; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+</style>
+</head>
+<body>
+<div id="app" class="wrap"></div>
+
+<script>
+// ================== CONFIGURAÇÃO ==================
+const API_URL = "https://script.google.com/macros/s/AKfycbxI7-RA_RWFnAnXH9ErA5e08WPEhN2UuZlm55tXl1nDwBnuGKJ6CJzsi98Ycdw70qy-/exec";
+// ====================================================
+
+function getSessao(){ try { return JSON.parse(sessionStorage.getItem('crm_sessao') || 'null'); } catch(e){ return null; } }
+function salvarSessao(s){ sessionStorage.setItem('crm_sessao', JSON.stringify(s)); }
+
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function brl(v){ return v===null||v===undefined||v==='' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDataHora(iso){ if(!iso) return '—'; return new Date(iso).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+
+function buscarViaJsonp(url, params){
+  return new Promise((resolve) => {
+    const nomeCallback = 'jsonp_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+    const script = document.createElement('script');
+    window[nomeCallback] = (resposta) => { delete window[nomeCallback]; script.remove(); resolve(resposta); };
+    script.onerror = () => { delete window[nomeCallback]; script.remove(); resolve({erro:'falha_de_rede'}); };
+    script.src = url + '?' + params + '&callback=' + nomeCallback + '&_=' + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
+// Haversine — distância em km entre duas coordenadas.
+function distanciaKm(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function fmtDistancia(km){ return km < 1 ? Math.round(km*1000) + ' m' : km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' km'; }
+
+// =========================== LOGIN ===========================
+
+function renderLogin(erro){
+  document.getElementById('app').innerHTML = `
+    <div class="login-box">
+      <h1 style="margin-bottom:18px;">CRM — Vitanuts</h1>
+      ${erro ? '<p class="erro">'+escapeHtml(erro)+'</p>' : ''}
+      <input type="text" id="senhaInput" placeholder="Senha" autofocus style="margin-bottom:10px;">
+      <button class="btn" id="btnEntrar">Entrar</button>
+    </div>`;
+  document.getElementById('btnEntrar').addEventListener('click', tentarLogin);
+  document.getElementById('senhaInput').addEventListener('keydown', e => { if(e.key === 'Enter') tentarLogin(); });
+}
+
+async function tentarLogin(){
+  const senha = document.getElementById('senhaInput').value;
+  const resp = await buscarViaJsonp(API_URL, 'senha=' + encodeURIComponent(senha));
+  if(resp.erro === 'senha_incorreta'){ renderLogin('Senha incorreta.'); return; }
+  if(resp.erro){ renderLogin('Erro ao carregar: ' + resp.erro); return; }
+  dados = resp;
+  renderEscolherVendedor(senha);
+}
+
+function renderEscolherVendedor(senha){
+  const vendedores = dados.vendedores || [];
+  document.getElementById('app').innerHTML = `
+    <div class="login-box">
+      <h1 style="margin-bottom:18px;">Quem é você?</h1>
+      <select id="vendedorSelect" style="margin-bottom:14px;">
+        <option value="">Selecione...</option>
+        ${vendedores.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
+      </select>
+      <button class="btn" id="btnConfirmarVendedor">Confirmar</button>
+    </div>`;
+  document.getElementById('btnConfirmarVendedor').addEventListener('click', () => {
+    const vendedor = document.getElementById('vendedorSelect').value;
+    if(!vendedor){ alert('Escolha seu nome pra continuar.'); return; }
+    salvarSessao({ senha: senha, vendedor: vendedor });
+    pedirLocalizacaoERenderizar();
+  });
+}
+
+// =========================== GEOLOCALIZAÇÃO ===========================
+
+let localizacaoAtual = null;
+
+function pedirLocalizacaoERenderizar(){
+  document.getElementById('app').innerHTML = '<div class="spinner-linha">Pedindo localização...</div>';
+  if(!navigator.geolocation){
+    document.getElementById('app').innerHTML = '<div class="erro" style="margin-top:40px;">Esse navegador não suporta geolocalização.</div>';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { localizacaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude }; render(); },
+    (err) => {
+      document.getElementById('app').innerHTML = `
+        <div class="erro" style="margin-top:40px;">Não consegui pegar sua localização (${escapeHtml(err.message)}). Precisa permitir acesso à localização no navegador.</div>
+        <button class="btn" id="btnTentarDeNovo" style="margin-top:14px;">Tentar de novo</button>`;
+      document.getElementById('btnTentarDeNovo').addEventListener('click', pedirLocalizacaoERenderizar);
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+// =========================== DADOS ===========================
+
+let dados = null;
+
+async function carregarDados(){
+  const sessao = getSessao();
+  const resp = await buscarViaJsonp(API_URL, 'senha=' + encodeURIComponent(sessao.senha));
+  if(resp.erro){ sessionStorage.removeItem('crm_sessao'); renderLogin('Sessão expirada, entre de novo.'); return; }
+  dados = resp;
+  render();
+}
+
+// =========================== TELA PRINCIPAL: 20 MAIS PERTO ===========================
+
+function statusTagClasse(status){
+  if(status === 'Fechado') return 'tag-green';
+  if(status === 'Perdido' || status === 'Sem interesse no momento') return 'tag-red';
+  if(status === 'Negociando') return 'tag-amber';
+  return 'tag-neutral';
+}
+
+function render(){
+  const sessao = getSessao();
+  if(!sessao){ renderLogin(); return; }
+  if(!localizacaoAtual){ pedirLocalizacaoERenderizar(); return; }
+  if(!dados){ document.getElementById('app').innerHTML = '<div class="spinner-linha">Carregando clientes...</div>'; return; }
+
+  const clientes = (dados.clientes || []).map(c => Object.assign({}, c, {
+    distancia_km: distanciaKm(localizacaoAtual.lat, localizacaoAtual.lng, c.lat, c.lng),
+  })).sort((a,b) => a.distancia_km - b.distancia_km);
+
+  const top20 = clientes.slice(0, 20);
+
+  document.getElementById('app').innerHTML = `
+    <div class="nav">
+      <div>
+        <h1>CRM — Vitanuts</h1>
+        <p class="muted" style="font-size:12px;margin-top:2px;">${escapeHtml(sessao.vendedor)} · ${dados.total_com_coordenada} cliente(s) com localização</p>
+      </div>
+      <button class="btn btn-secundario" id="btnAtualizarLocal" style="width:auto;padding:8px 12px;font-size:12px;">📍 Atualizar</button>
+    </div>
+
+    ${dados.total_na_base > dados.total_com_coordenada ? `<div class="aviso">${dados.total_na_base - dados.total_com_coordenada} cliente(s) da base sem localização ainda — não aparecem aqui.</div>` : ''}
+
+    <h2 style="margin-bottom:10px;">Os ${top20.length} mais perto de você</h2>
+    <div id="listaClientes">
+      ${top20.map((c, i) => `
+        <div class="cliente-card" data-idx="${i}">
+          <div class="cliente-linha">
+            <div style="flex:1;min-width:0;">
+              <div class="cliente-nome">${escapeHtml(c.nome)}</div>
+              <div class="cliente-sub">${escapeHtml(c.cidade)}/${escapeHtml(c.uf)}${c.precisao==='cidade' ? ' · localização aproximada' : ''}</div>
+              ${c.visita && c.visita.status_negociacao ? `<span class="tag ${statusTagClasse(c.visita.status_negociacao)}">${escapeHtml(c.visita.status_negociacao)}</span>` : ''}
+            </div>
+            <div class="distancia">${fmtDistancia(c.distancia_km)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <button class="btn-flutuante" id="btnNovoCliente" title="Cadastrar cliente novo">+</button>
+  `;
+
+  window.__top20 = top20;
+
+  document.querySelectorAll('.cliente-card').forEach(card => {
+    card.addEventListener('click', () => abrirDetalheCliente(window.__top20[Number(card.getAttribute('data-idx'))]));
+  });
+  document.getElementById('btnAtualizarLocal').addEventListener('click', pedirLocalizacaoERenderizar);
+  document.getElementById('btnNovoCliente').addEventListener('click', abrirCadastroCliente);
+}
+
+// =========================== MODAL: DETALHE / REGISTRAR VISITA ===========================
+
+function fecharModal(){
+  const overlay = document.getElementById('modalOverlay');
+  if(overlay) overlay.remove();
+}
+
+function abrirDetalheCliente(cliente){
+  const sessao = getSessao();
+  const opcoesStatus = dados.status_negociacao_opcoes || [];
+  const v = cliente.visita || {};
+  const precos = (v.concorrente_precos && v.concorrente_precos.length) ? v.concorrente_precos : [{},{},{},{}];
+  while(precos.length < 4) precos.push({});
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'modalOverlay';
+  overlay.innerHTML = `
+    <div class="painel-modal">
+      <div class="painel-modal-header">
+        <h2 style="margin:0;">${escapeHtml(cliente.nome)}</h2>
+        <button class="fechar-modal" id="btnFecharModal">✕</button>
+      </div>
+      <p class="muted" style="font-size:12.5px;margin-bottom:2px;">${escapeHtml(cliente.endereco || '')}</p>
+      <p class="muted" style="font-size:12.5px;margin-bottom:14px;">${fmtDistancia(cliente.distancia_km)} de você ${cliente.precisao==='cidade' ? '(localização aproximada)' : ''}</p>
+      ${v.ultima_visita ? `<p class="muted" style="font-size:11.5px;margin-bottom:14px;">Última visita: ${fmtDataHora(v.ultima_visita.data)} por ${escapeHtml(v.ultima_visita.vendedor)}</p>` : ''}
+
+      <div class="campo">
+        <label>Status da negociação</label>
+        <select id="campoStatus">
+          <option value="">—</option>
+          ${opcoesStatus.map(o => `<option value="${escapeHtml(o)}" ${v.status_negociacao===o?'selected':''}>${escapeHtml(o)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label>Ação pendente (o que precisa ser feito)</label>
+        <textarea id="campoAcao" placeholder="Ex: retornar com proposta de preço na próxima semana">${escapeHtml(v.acao_pendente || '')}</textarea>
+      </div>
+
+      <div class="campo">
+        <label>Principal concorrente</label>
+        <input type="text" id="campoConcorrente" placeholder="Nome do concorrente" value="${escapeHtml(v.concorrente_nome || '')}">
+      </div>
+
+      <div class="campo">
+        <label>Preços do concorrente (até 4 produtos)</label>
+        ${[0,1,2,3].map(i => `
+          <div class="linha-preco" style="margin-bottom:6px;">
+            <input type="text" id="preco${i}Label" placeholder="Produto" value="${escapeHtml(precos[i].label || '')}">
+            <input type="number" id="preco${i}Valor" placeholder="R$" step="0.01" value="${precos[i].valor !== undefined && precos[i].valor !== null ? precos[i].valor : ''}">
+          </div>
+        `).join('')}
+      </div>
+
+      <button class="btn" id="btnSalvarVisita" style="margin-top:6px;">Salvar visita</button>
+
+      ${(v.historico && v.historico.length > 1) ? `
+        <div style="margin-top:18px;">
+          <p class="muted" style="font-size:11.5px;margin-bottom:6px;">Histórico (${v.historico.length})</p>
+          ${v.historico.slice().reverse().slice(0,5).map(h => `<p class="muted" style="font-size:11px;padding:3px 0;border-top:1px solid var(--color-divider);">${fmtDataHora(h.data)} — ${escapeHtml(h.vendedor)} — ${escapeHtml(h.status_negociacao||'—')}</p>`).join('')}
+        </div>
+      ` : ''}
+    </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
+  overlay.addEventListener('click', (ev) => { if(ev.target === overlay) fecharModal(); });
+
+  document.getElementById('btnSalvarVisita').addEventListener('click', async () => {
+    const btn = document.getElementById('btnSalvarVisita');
+    btn.textContent = 'Salvando...'; btn.disabled = true;
+
+    const params = [
+      'senha=' + encodeURIComponent(sessao.senha),
+      'acao=salvar_visita',
+      'cnpj=' + encodeURIComponent(cliente.cnpj || ''),
+      'vendedor=' + encodeURIComponent(sessao.vendedor),
+      'status_negociacao=' + encodeURIComponent(document.getElementById('campoStatus').value),
+      'acao_pendente=' + encodeURIComponent(document.getElementById('campoAcao').value),
+      'concorrente_nome=' + encodeURIComponent(document.getElementById('campoConcorrente').value),
+    ];
+    for(let i=0;i<4;i++){
+      params.push('preco'+(i+1)+'_label=' + encodeURIComponent(document.getElementById('preco'+i+'Label').value));
+      params.push('preco'+(i+1)+'_valor=' + encodeURIComponent(document.getElementById('preco'+i+'Valor').value));
+    }
+    const resp = await buscarViaJsonp(API_URL, params.join('&'));
+    if(resp.ok){
+      fecharModal();
+      await carregarDados();
+    } else {
+      btn.textContent = 'Salvar visita'; btn.disabled = false;
+      alert('Não consegui salvar: ' + (resp.erro || 'erro desconhecido'));
+    }
+  });
+}
+
+// =========================== MODAL: CADASTRAR CLIENTE NOVO ===========================
+
+function abrirCadastroCliente(){
+  const sessao = getSessao();
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'modalOverlay';
+  overlay.innerHTML = `
+    <div class="painel-modal">
+      <div class="painel-modal-header">
+        <h2 style="margin:0;">Cadastrar cliente novo</h2>
+        <button class="fechar-modal" id="btnFecharModal">✕</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin-bottom:14px;">Município e UF são obrigatórios pra conseguir localizar no mapa. CNPJ é opcional.</p>
+
+      <div class="campo"><label>Nome do cliente *</label><input type="text" id="ncNome"></div>
+      <div class="campo"><label>CNPJ (opcional)</label><input type="text" id="ncCnpj" placeholder="Só números"></div>
+      <div class="campo"><label>Rua / Avenida</label><input type="text" id="ncEndereco"></div>
+      <div class="campo"><label>Número</label><input type="text" id="ncNumero"></div>
+      <div class="campo"><label>Bairro</label><input type="text" id="ncBairro"></div>
+      <div class="campo"><label>Município *</label><input type="text" id="ncMunicipio"></div>
+      <div class="campo"><label>UF *</label><input type="text" id="ncUf" maxlength="2" style="text-transform:uppercase;"></div>
+      <div class="campo"><label>CEP</label><input type="text" id="ncCep"></div>
+
+      <button class="btn" id="btnSalvarCliente" style="margin-top:6px;">Cadastrar e localizar</button>
+      <p id="cadastroMsg" style="margin-top:10px;font-size:12.5px;"></p>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
+  overlay.addEventListener('click', (ev) => { if(ev.target === overlay) fecharModal(); });
+
+  document.getElementById('btnSalvarCliente').addEventListener('click', async () => {
+    const nome = document.getElementById('ncNome').value.trim();
+    const municipio = document.getElementById('ncMunicipio').value.trim();
+    const uf = document.getElementById('ncUf').value.trim();
+    if(!nome || !municipio || !uf){ alert('Nome, município e UF são obrigatórios.'); return; }
+
+    const btn = document.getElementById('btnSalvarCliente');
+    btn.textContent = 'Localizando endereço...'; btn.disabled = true;
+    document.getElementById('cadastroMsg').textContent = '';
+
+    const params = [
+      'senha=' + encodeURIComponent(sessao.senha),
+      'acao=cadastrar_cliente',
+      'nome=' + encodeURIComponent(nome),
+      'cnpj=' + encodeURIComponent(document.getElementById('ncCnpj').value),
+      'endereco=' + encodeURIComponent(document.getElementById('ncEndereco').value),
+      'numero=' + encodeURIComponent(document.getElementById('ncNumero').value),
+      'bairro=' + encodeURIComponent(document.getElementById('ncBairro').value),
+      'municipio=' + encodeURIComponent(municipio),
+      'uf=' + encodeURIComponent(uf),
+      'cep=' + encodeURIComponent(document.getElementById('ncCep').value),
+    ];
+    const resp = await buscarViaJsonp(API_URL, params.join('&'));
+    btn.textContent = 'Cadastrar e localizar'; btn.disabled = false;
+
+    if(resp.erro){
+      document.getElementById('cadastroMsg').innerHTML = '<span style="color:var(--color-red);">Erro: ' + escapeHtml(resp.erro) + '</span>';
+      return;
+    }
+    if(resp.ok){
+      fecharModal();
+      await carregarDados();
+    } else {
+      document.getElementById('cadastroMsg').innerHTML = '<span style="color:var(--color-amber);">Cliente salvo, mas não consegui localizar o endereço no mapa (precisão: nenhuma). Confere se o município/UF estão certos, ou tenta de novo mais tarde.</span>';
+    }
+  });
+}
+
+// =========================== INÍCIO ===========================
+
+const sessaoExistente = getSessao();
+if(sessaoExistente){
+  carregarDados(); // já dispara render() no final, que pede localização se ainda não tiver
+} else {
+  renderLogin();
+}
+</script>
+</body>
+</html>
