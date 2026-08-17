@@ -65,19 +65,15 @@ label { display: block; font-size: 12px; color: color-mix(in srgb, var(--color-t
 </head>
 <body>
 <div id="app" class="wrap"></div>
-
 <script>
 // ================== CONFIGURAÇÃO ==================
 const API_URL = "https://script.google.com/macros/s/AKfycbxI7-RA_RWFnAnXH9ErA5e08WPEhN2UuZlm55tXl1nDwBnuGKJ6CJzsi98Ycdw70qy-/exec";
 // ====================================================
-
 function getSessao(){ try { return JSON.parse(sessionStorage.getItem('crm_sessao') || 'null'); } catch(e){ return null; } }
 function salvarSessao(s){ sessionStorage.setItem('crm_sessao', JSON.stringify(s)); }
-
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function brl(v){ return v===null||v===undefined||v==='' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDataHora(iso){ if(!iso) return '—'; return new Date(iso).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
-
 function buscarViaJsonp(url, params){
   return new Promise((resolve) => {
     const nomeCallback = 'jsonp_' + Date.now() + '_' + Math.floor(Math.random()*100000);
@@ -88,7 +84,6 @@ function buscarViaJsonp(url, params){
     document.body.appendChild(script);
   });
 }
-
 // Haversine — distância em km entre duas coordenadas.
 function distanciaKm(lat1, lon1, lat2, lon2){
   const R = 6371;
@@ -98,9 +93,14 @@ function distanciaKm(lat1, lon1, lat2, lon2){
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 function fmtDistancia(km){ return km < 1 ? Math.round(km*1000) + ' m' : km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' km'; }
-
+// Nome fantasia se existir, senão razão social. "nome_exibicao" vem
+// pronto do backend (Code_CRM.gs já resolve fantasia || razão social);
+// o "|| c.nome" aqui é só rede de segurança pra qualquer registro
+// antigo que por algum motivo não tenha o campo ainda.
+function nomeExibicao_(c){ return (c && c.nome_exibicao && String(c.nome_exibicao).trim()) ? c.nome_exibicao : (c ? c.nome : ''); }
+// Remove acento e ignora maiúscula/minúscula pra busca por nome mais tolerante.
+function normalizarBusca_(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 // =========================== LOGIN ===========================
-
 function renderLogin(erro){
   document.getElementById('app').innerHTML = `
     <div class="login-box">
@@ -112,7 +112,6 @@ function renderLogin(erro){
   document.getElementById('btnEntrar').addEventListener('click', tentarLogin);
   document.getElementById('senhaInput').addEventListener('keydown', e => { if(e.key === 'Enter') tentarLogin(); });
 }
-
 async function tentarLogin(){
   const senha = document.getElementById('senhaInput').value;
   const resp = await buscarViaJsonp(API_URL, 'senha=' + encodeURIComponent(senha));
@@ -121,7 +120,6 @@ async function tentarLogin(){
   dados = resp;
   renderEscolherVendedor(senha);
 }
-
 function renderEscolherVendedor(senha){
   const vendedores = dados.vendedores || [];
   document.getElementById('app').innerHTML = `
@@ -140,11 +138,8 @@ function renderEscolherVendedor(senha){
     pedirLocalizacaoERenderizar();
   });
 }
-
 // =========================== GEOLOCALIZAÇÃO ===========================
-
 let localizacaoAtual = null;
-
 function pedirLocalizacaoERenderizar(){
   document.getElementById('app').innerHTML = '<div class="spinner-linha">Pedindo localização...</div>';
   if(!navigator.geolocation){
@@ -162,11 +157,8 @@ function pedirLocalizacaoERenderizar(){
     { enableHighAccuracy: true, timeout: 15000 }
   );
 }
-
 // =========================== DADOS ===========================
-
 let dados = null;
-
 async function carregarDados(){
   const sessao = getSessao();
   const resp = await buscarViaJsonp(API_URL, 'senha=' + encodeURIComponent(sessao.senha));
@@ -174,27 +166,27 @@ async function carregarDados(){
   dados = resp;
   render();
 }
-
-// =========================== TELA PRINCIPAL: 20 MAIS PERTO ===========================
-
+// =========================== TELA PRINCIPAL: 20 MAIS PERTO + BUSCA ===========================
 function statusTagClasse(status){
   if(status === 'Fechado') return 'tag-green';
   if(status === 'Perdido' || status === 'Sem interesse no momento') return 'tag-red';
   if(status === 'Negociando') return 'tag-amber';
   return 'tag-neutral';
 }
-
+// Lista completa já ordenada por distância (recalculada a cada render,
+// já que a localização pode mudar) — a busca por nome filtra ESSA
+// lista inteira, não só os 20 mais próximos, por isso "independente da
+// distância" funciona mesmo pra um cliente que esteja longe.
+let __clientesOrdenados = [];
+let __termoBusca = '';
 function render(){
   const sessao = getSessao();
   if(!sessao){ renderLogin(); return; }
   if(!localizacaoAtual){ pedirLocalizacaoERenderizar(); return; }
   if(!dados){ document.getElementById('app').innerHTML = '<div class="spinner-linha">Carregando clientes...</div>'; return; }
-
-  const clientes = (dados.clientes || []).map(c => Object.assign({}, c, {
+  __clientesOrdenados = (dados.clientes || []).map(c => Object.assign({}, c, {
     distancia_km: distanciaKm(localizacaoAtual.lat, localizacaoAtual.lng, c.lat, c.lng),
   })).sort((a,b) => a.distancia_km - b.distancia_km);
-
-  const top20 = clientes.slice(0, 20);
 
   document.getElementById('app').innerHTML = `
     <div class="nav">
@@ -204,64 +196,80 @@ function render(){
       </div>
       <button class="btn btn-secundario" id="btnAtualizarLocal" style="width:auto;padding:8px 12px;font-size:12px;">📍 Atualizar</button>
     </div>
-
     ${dados.total_na_base > dados.total_com_coordenada ? `<div class="aviso">${dados.total_na_base - dados.total_com_coordenada} cliente(s) da base sem localização ainda — não aparecem aqui.</div>` : ''}
-
-    <h2 style="margin-bottom:10px;">Os ${top20.length} mais perto de você</h2>
-    <div id="listaClientes">
-      ${top20.map((c, i) => `
-        <div class="cliente-card" data-idx="${i}">
-          <div class="cliente-linha">
-            <div style="flex:1;min-width:0;">
-              <div class="cliente-nome">${escapeHtml(c.nome)}</div>
-              <div class="cliente-sub">${escapeHtml(c.cidade)}/${escapeHtml(c.uf)}${c.precisao==='cidade' ? ' · localização aproximada' : ''}</div>
-              ${c.visita && c.visita.status_negociacao ? `<span class="tag ${statusTagClasse(c.visita.status_negociacao)}">${escapeHtml(c.visita.status_negociacao)}</span>` : ''}
-            </div>
-            <div class="distancia">${fmtDistancia(c.distancia_km)}</div>
-          </div>
-        </div>
-      `).join('')}
+    <div class="campo">
+      <label>Buscar cliente pelo nome (qualquer distância)</label>
+      <input type="text" id="buscaClienteInput" placeholder="Nome fantasia ou razão social..." value="${escapeHtml(__termoBusca)}">
     </div>
-
+    <h2 id="tituloLista" style="margin-bottom:10px;"></h2>
+    <div id="listaClientes"></div>
     <button class="btn-flutuante" id="btnNovoCliente" title="Cadastrar cliente novo">+</button>
   `;
-
-  window.__top20 = top20;
-
-  document.querySelectorAll('.cliente-card').forEach(card => {
-    card.addEventListener('click', () => abrirDetalheCliente(window.__top20[Number(card.getAttribute('data-idx'))]));
-  });
   document.getElementById('btnAtualizarLocal').addEventListener('click', pedirLocalizacaoERenderizar);
   document.getElementById('btnNovoCliente').addEventListener('click', abrirCadastroCliente);
+  const inputBusca = document.getElementById('buscaClienteInput');
+  inputBusca.addEventListener('input', () => { __termoBusca = inputBusca.value; renderizarLista(); });
+  renderizarLista();
 }
-
+function renderizarLista(){
+  const termo = normalizarBusca_(__termoBusca);
+  let lista, titulo;
+  if(termo){
+    lista = __clientesOrdenados.filter(c =>
+      normalizarBusca_(nomeExibicao_(c)).includes(termo) || normalizarBusca_(c.nome).includes(termo)
+    );
+    titulo = lista.length + ' resultado(s) para "' + __termoBusca + '"';
+  } else {
+    lista = __clientesOrdenados.slice(0, 20);
+    titulo = 'Os ' + lista.length + ' mais perto de você';
+  }
+  document.getElementById('tituloLista').textContent = titulo;
+  document.getElementById('listaClientes').innerHTML = lista.length ? lista.map((c, i) => `
+    <div class="cliente-card" data-idx="${i}">
+      <div class="cliente-linha">
+        <div style="flex:1;min-width:0;">
+          <div class="cliente-nome">${escapeHtml(nomeExibicao_(c))}</div>
+          <div class="cliente-sub">${escapeHtml(c.cidade)}/${escapeHtml(c.uf)}${c.precisao==='cidade' ? ' · localização aproximada' : ''}</div>
+          ${c.visita && c.visita.status_negociacao ? `<span class="tag ${statusTagClasse(c.visita.status_negociacao)}">${escapeHtml(c.visita.status_negociacao)}</span>` : ''}
+        </div>
+        <div class="distancia">${fmtDistancia(c.distancia_km)}</div>
+      </div>
+    </div>
+  `).join('') : '<p class="muted" style="padding:20px 4px;text-align:center;">Nenhum cliente encontrado.</p>';
+  window.__listaAtual = lista;
+  document.querySelectorAll('.cliente-card').forEach(card => {
+    card.addEventListener('click', () => abrirDetalheCliente(window.__listaAtual[Number(card.getAttribute('data-idx'))]));
+  });
+}
 // =========================== MODAL: DETALHE / REGISTRAR VISITA ===========================
-
 function fecharModal(){
   const overlay = document.getElementById('modalOverlay');
   if(overlay) overlay.remove();
 }
-
 function abrirDetalheCliente(cliente){
   const sessao = getSessao();
   const opcoesStatus = dados.status_negociacao_opcoes || [];
   const v = cliente.visita || {};
   const precos = (v.concorrente_precos && v.concorrente_precos.length) ? v.concorrente_precos : [{},{},{},{}];
   while(precos.length < 4) precos.push({});
-
+  // Identificador do cliente pro backend — "id" é o campo correto
+  // (cnpj ou "manual_<uuid>"); "cnpj" fica só como fallback pra
+  // registros muito antigos que não tenham "id" ainda.
+  const clienteId = cliente.id || cliente.cnpj || '';
+  const nomeTopo = nomeExibicao_(cliente);
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.id = 'modalOverlay';
   overlay.innerHTML = `
     <div class="painel-modal">
       <div class="painel-modal-header">
-        <h2 style="margin:0;">${escapeHtml(cliente.nome)}</h2>
+        <h2 style="margin:0;">${escapeHtml(nomeTopo)}</h2>
         <button class="fechar-modal" id="btnFecharModal">✕</button>
       </div>
+      ${cliente.nome && cliente.nome !== nomeTopo ? `<p class="muted" style="font-size:11.5px;margin-bottom:2px;">Razão social: ${escapeHtml(cliente.nome)}</p>` : ''}
       <p class="muted" style="font-size:12.5px;margin-bottom:2px;">${escapeHtml(cliente.endereco || '')}</p>
       <p class="muted" style="font-size:12.5px;margin-bottom:14px;">${fmtDistancia(cliente.distancia_km)} de você ${cliente.precisao==='cidade' ? '(localização aproximada)' : ''}</p>
       ${v.ultima_visita ? `<p class="muted" style="font-size:11.5px;margin-bottom:14px;">Última visita: ${fmtDataHora(v.ultima_visita.data)} por ${escapeHtml(v.ultima_visita.vendedor)}</p>` : ''}
-
       <div class="campo">
         <label>Status da negociação</label>
         <select id="campoStatus">
@@ -269,17 +277,14 @@ function abrirDetalheCliente(cliente){
           ${opcoesStatus.map(o => `<option value="${escapeHtml(o)}" ${v.status_negociacao===o?'selected':''}>${escapeHtml(o)}</option>`).join('')}
         </select>
       </div>
-
       <div class="campo">
         <label>Ação pendente (o que precisa ser feito)</label>
         <textarea id="campoAcao" placeholder="Ex: retornar com proposta de preço na próxima semana">${escapeHtml(v.acao_pendente || '')}</textarea>
       </div>
-
       <div class="campo">
         <label>Principal concorrente</label>
         <input type="text" id="campoConcorrente" placeholder="Nome do concorrente" value="${escapeHtml(v.concorrente_nome || '')}">
       </div>
-
       <div class="campo">
         <label>Preços do concorrente (até 4 produtos)</label>
         ${[0,1,2,3].map(i => `
@@ -289,9 +294,7 @@ function abrirDetalheCliente(cliente){
           </div>
         `).join('')}
       </div>
-
       <button class="btn" id="btnSalvarVisita" style="margin-top:6px;">Salvar visita</button>
-
       ${(v.historico && v.historico.length > 1) ? `
         <div style="margin-top:18px;">
           <p class="muted" style="font-size:11.5px;margin-bottom:6px;">Histórico (${v.historico.length})</p>
@@ -300,18 +303,15 @@ function abrirDetalheCliente(cliente){
       ` : ''}
     </div>`;
   document.body.appendChild(overlay);
-
   document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
   overlay.addEventListener('click', (ev) => { if(ev.target === overlay) fecharModal(); });
-
   document.getElementById('btnSalvarVisita').addEventListener('click', async () => {
     const btn = document.getElementById('btnSalvarVisita');
     btn.textContent = 'Salvando...'; btn.disabled = true;
-
     const params = [
       'senha=' + encodeURIComponent(sessao.senha),
       'acao=salvar_visita',
-      'cnpj=' + encodeURIComponent(cliente.cnpj || ''),
+      'cliente_id=' + encodeURIComponent(clienteId),
       'vendedor=' + encodeURIComponent(sessao.vendedor),
       'status_negociacao=' + encodeURIComponent(document.getElementById('campoStatus').value),
       'acao_pendente=' + encodeURIComponent(document.getElementById('campoAcao').value),
@@ -331,9 +331,7 @@ function abrirDetalheCliente(cliente){
     }
   });
 }
-
 // =========================== MODAL: CADASTRAR CLIENTE NOVO ===========================
-
 function abrirCadastroCliente(){
   const sessao = getSessao();
   const overlay = document.createElement('div');
@@ -346,7 +344,6 @@ function abrirCadastroCliente(){
         <button class="fechar-modal" id="btnFecharModal">✕</button>
       </div>
       <p class="muted" style="font-size:12px;margin-bottom:14px;">Município e UF são obrigatórios pra conseguir localizar no mapa. CNPJ é opcional.</p>
-
       <div class="campo"><label>Nome do cliente *</label><input type="text" id="ncNome"></div>
       <div class="campo"><label>CNPJ (opcional)</label><input type="text" id="ncCnpj" placeholder="Só números"></div>
       <div class="campo"><label>Rua / Avenida</label><input type="text" id="ncEndereco"></div>
@@ -355,25 +352,20 @@ function abrirCadastroCliente(){
       <div class="campo"><label>Município *</label><input type="text" id="ncMunicipio"></div>
       <div class="campo"><label>UF *</label><input type="text" id="ncUf" maxlength="2" style="text-transform:uppercase;"></div>
       <div class="campo"><label>CEP</label><input type="text" id="ncCep"></div>
-
       <button class="btn" id="btnSalvarCliente" style="margin-top:6px;">Cadastrar e localizar</button>
       <p id="cadastroMsg" style="margin-top:10px;font-size:12.5px;"></p>
     </div>`;
   document.body.appendChild(overlay);
-
   document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
   overlay.addEventListener('click', (ev) => { if(ev.target === overlay) fecharModal(); });
-
   document.getElementById('btnSalvarCliente').addEventListener('click', async () => {
     const nome = document.getElementById('ncNome').value.trim();
     const municipio = document.getElementById('ncMunicipio').value.trim();
     const uf = document.getElementById('ncUf').value.trim();
     if(!nome || !municipio || !uf){ alert('Nome, município e UF são obrigatórios.'); return; }
-
     const btn = document.getElementById('btnSalvarCliente');
     btn.textContent = 'Localizando endereço...'; btn.disabled = true;
     document.getElementById('cadastroMsg').textContent = '';
-
     const params = [
       'senha=' + encodeURIComponent(sessao.senha),
       'acao=cadastrar_cliente',
@@ -388,7 +380,6 @@ function abrirCadastroCliente(){
     ];
     const resp = await buscarViaJsonp(API_URL, params.join('&'));
     btn.textContent = 'Cadastrar e localizar'; btn.disabled = false;
-
     if(resp.erro){
       document.getElementById('cadastroMsg').innerHTML = '<span style="color:var(--color-red);">Erro: ' + escapeHtml(resp.erro) + '</span>';
       return;
@@ -401,9 +392,7 @@ function abrirCadastroCliente(){
     }
   });
 }
-
 // =========================== INÍCIO ===========================
-
 const sessaoExistente = getSessao();
 if(sessaoExistente){
   carregarDados(); // já dispara render() no final, que pede localização se ainda não tiver
